@@ -1,0 +1,1 @@
+BASE_URL = "https://www.thermofisher.com/uk/en/home.html"
