@@ -1,8 +1,8 @@
 from ast import Pass
 from tkinter import Frame
 from tracemalloc import start
-from selenium import webdriver
 import selenium
+from selenium import webdriver
 import pandas as pd
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common import service
@@ -25,11 +25,20 @@ import wget
 import smtplib
 import ssl
 import creds
+import pymysql
+import psycopg2
+import psycopg2.extras
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from sqlalchemy import create_engine
+from sqlalchemy import inspect
 
+
+
+
+engine = create_engine('postgresql+psycopg2://postgres:ubuntu@ec2-54-75-44-63.eu-west-1.compute.amazonaws.com/5432/thermo')
 smtp_port = 587
 smtp_server = 'smtp.gmail.com'
 
@@ -73,8 +82,7 @@ class Scraper:
 
         '''''''''
     
-   
-        
+          
     def accept_cookies(self, xpath: str = '//a[@class="call"]'):
         '''
         Finds and clicks the "Accept" cookies button.
@@ -177,11 +185,13 @@ class Sequence_scraper(Scraper):
         sanger_sequencing = self.driver.find_element(By.XPATH, xpath)
         sanger_sequencing.click()
 
-    def search_equipment(self, xpath: str = '//a[@href="/uk/en/home/life-science/sequencing/sanger-sequencing/sanger-sequencing-technology-accessories.html"]'):  
+    def search_equipment(self, xpath: str = '(//a[normalize-space()="Applied Biosystems Genetic Analysis Systems"])[1]'):  
         equipment = self.driver.find_element(By.XPATH, xpath)
         
         equipment.click()
-
+    
+    
+    
     def sanger_equipments(self):
         equipments = self.driver.find_elements(By.TAG_NAME, 'tr')
 
@@ -208,11 +218,113 @@ class Sequence_scraper(Scraper):
             #df.to_csv('Sequencing_Equipments.csv', index=False)
 
             df = pd.DataFrame({'SeqStudio': SeqStudio, 'SeqStudio_flex': SeqStudio_flex, 'Applied_Biosystem_3500': Applied_Biosystem_3500, 'Applied_Biosystem_3750': Applied_Biosystem_3730})
-            df.to_csv('Sequencing_Equipments2.csv')
+            df.to_csv('Sequencing_Equipments.csv', sep='|')
             print(df)
 
             #print (equipment.text)
+
+            
+
     
+
+    def copy_csv_to_postgres(self):
+        try:
+            # Connect to the database
+            conn = psycopg2.connect(
+                host="localhost",
+                database="thermo1",
+                user="postgres",
+                password=creds.pgs_password
+            )
+
+            # Open the CSV file
+            with open('Sequencing_Equipments.csv', 'r') as f:
+                # Use the copy_from method to insert the data from the CSV file into the table
+                cursor = conn.cursor()
+                cursor.copy_from(f, 'thermo1', null='NULL', sep=',')
+                cursor.close()
+
+
+            # Commit the transaction
+            conn.commit()
+
+        except Exception as e:
+            # Rollback the transaction and print the error message if something goes wrong
+            conn.rollback()
+            print(e)
+
+        finally:
+            # Close the database connection
+            conn.close()
+
+
+
+
+
+
+    
+
+#class db_connect:
+    
+    def connect_to_pgs_database(self):
+        
+        
+        host_name = "localhost"
+        database = "thermo4"
+        username = "postgres"
+        pwd = creds.pgs_password
+        port_id = "5432"
+
+
+
+        try:
+            conn = psycopg2.connect(
+                host=host_name,
+                dbname=database,
+                user=username,
+                password=pwd,
+                port=port_id
+        )
+
+        except psycopg2.Error as e:
+            print("Failed")
+            return
+
+        print("Connected")
+
+        
+        
+    def create_table(self, df, conn):
+        create_table_command = """
+            CREATE TABLE IF NOT EXISTS thermo1(
+                SeqStudio VARCHAR(255) PRIMARY KEY,
+                SeqStudio_flex TEXT NOT NULL,
+                Applied_Biosystem_3500 TEXT NOT NULL,
+                Applied_Biosystem_3750 TEXT NOT NULL
+            )
+        """
+
+
+        cursor = conn.cursor()
+        cursor.execute(create_table_command)
+
+        # Write the data from the dataframe to the table
+        df.to_sql('thermo1', conn, if_exists='append', index=False)
+
+        # Close the cursor and connection to the database
+        cursor.close()
+        conn.close()
+        
+    
+
+
+
+    
+
+
+
+    
+
 
 class send_mails:
 
@@ -269,7 +381,7 @@ class send_mails:
 
         TIE_server.quit
         
-    send_emails(email_list)
+    #send_emails(email_list)
 
             
     def quit(self):
@@ -301,17 +413,31 @@ class Pipette_scraper(Scraper):
 
 if __name__ == "__main__":
     print('start')
-    bot = send_mails()
-    #bot.land_first_page()
+    bot = Sequence_scraper()
+    bot.land_first_page()
+    #bot = db_connect()
     #time.sleep(3)
     #bot.accept_cookies()
-    #time.sleep(4)
-    #bot.move_to_element()
-    #bot.send_emails()
-    #bot.primer_order()
-    #time.sleep(4)
-    #bot.primer_order()
-   
+    #time.sleep(2)
+    
+    #bot.get_sequencing()
+    #time.sleep(2)
+    #bot.sanger_sequencing()
+    #time.sleep(2)
+    #bot.search_equipment()
+    #time.sleep(10)
+    #bot.sanger_equipments()
+    #time.sleep(2)
+    #bot.copy_csv_to_postgres()
+    #bot.connect_to_database()
+    #bot.append_data()
+    #bot.append_df_to_db()
+    #bot.create_table()
+    #bot.quit()
+    #equip_table = bot.sanger_equipments()
+
+    #equip_table.to_sql('sanger_equipments', engine,)
+
     
    
    

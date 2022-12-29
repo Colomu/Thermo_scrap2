@@ -1,0 +1,13 @@
+FROM python:3.8
+
+# Install required libraries
+RUN pip install pandas==1.5.0 psycopg2==2.9.5 PyMySQL==1.0.2 requests==2.27.1 selenium==4.7.2 SQLAlchemy==1.4.44 webdriver_manager==3.8.4 wget==3.2
+
+# Copy the script to the image
+COPY script.py /app/script.py
+
+# Set the working directory to the app directory
+WORKDIR /app
+
+# Run the script when the container starts
+CMD ["python", "script.py"]
